@@ -360,7 +360,11 @@ class TGB:
         # Count whole world's land count
         counter = 0
         for cell in self.cells.values():
-            if cell.tmp_side > 0:
+            assert isinstance(cell, Cell)
+            if cell.province:
+                if cell.province.side > 0:
+                    counter += 1
+            elif cell.tmp_side > 0:
                 counter += 1
         return counter
 
@@ -558,7 +562,7 @@ class TGB:
                 # now we have a lot of cells, but no connection between them
 
         for cell in self.cells.values():
-                edm_list = []
+                edm_cells = []
                 for vec_edm_i in hex_sys.get_right_edm(cell.pos.y):
                     # iterate over all neighbour positions
                     pos_edm_i = pos + vec_edm_i
@@ -567,9 +571,10 @@ class TGB:
                     if self.valid_xy(pos_edm_i):
                         edm_cell_i = self.cells[pos_edm_i]
 
-                    edm_list.append(edm_cell_i)
-                assert len(edm_list) == 6
-                cell.edm_cells = edm_list
+                    edm_cells.append(edm_cell_i)
+                assert len(edm_cells) == 6
+                cell.edm_cells = edm_cells
+                assert len(cell.edm_cells) == 6
 
     def fill_random_units(self, d):
         # Obsolete
@@ -910,16 +915,27 @@ class TGB:
 
         self.create_cells(self.MAPSIZE_X, self.MAPSIZE_Y, piece=0)
 
-        # fill random cells untill a specific percentage is land area
-        while not self.count_land_area() >= minsize:
-            self.fill_random_boxes(3, [1, 2, 3, 4, 5, 6])
-            print self.count_land_area()
+        # fill random cells until a specific percentage is land area
+        while self.count_land_area() < minsize:
+            for_whom = [1, 2, 3, 4, 5, 6]
+            rand_pos = Vec2d(random.randint(2, self.MAPSIZE_X - 2), random.randint(2, self.MAPSIZE_Y - 2))
+            #if self.valid_xy(rand_pos):
+            rand_cell = self.cells[rand_pos]
+            assert isinstance(rand_cell, Cell)
+            rand_side = random.choice(for_whom)
+            print "rand_side: ", rand_side
+            rand_cell.build_town()
+            rand_cell.province = Province(rand_side, rand_cell.town, [rand_cell])
+            #for edm_cell in rand_cell.edm_cells:
+            #    if edm_cell:    # it might be None if rand_cell is on the edge of the map
+            #        player_id = random.choice(for_whom)
+            #        edm_cell.tmp_side = player_id
+
+            print "land area: ", self.count_land_area()
 
         # at the moment, there are no provinces and towns!
         for cur_cell in self.cells.values():
             assert isinstance(cur_cell, Cell)
-            cur_cell.build_town()
-            cur_cell.province = Province(cur_cell.tmp_side,cur_cell.town, [cur_cell])
         # now we have a map full of tiny Monacos ,)
 
         # first cycle:
@@ -927,21 +943,22 @@ class TGB:
         #   merge with a neighbour-province that has not more than 3 cell
         # merge it with a random neighbour
         for cur_cell in self.cells.values():
-            assert isinstance(cur_cell.province, Province)
-            if len(cur_cell.province.province_cells) == 1:
-                # iterate over neighbours in random order
-                did_merge = False
-                for rand_edm in random.shuffle(cur_cell.edm_cells):
-                    if rand_edm:    # it might be None
-                        if did_merge:   # merge with at most one neighbour
-                            break
-                        if rand_edm.province != cur_cell.province:
-                            assert isinstance(rand_edm, Cell)
-                            if rand_edm.province.size() == 1:
-                                rand_edm.change_to_province(cur_cell.province)
-                                did_merge = True
-                            else:
-                                pass
+            if cur_cell.province:   # otherwise it's water
+                assert isinstance(cur_cell.province, Province)
+                if len(cur_cell.province.province_cells) == 1:
+                    # iterate over neighbours in random order
+                    did_merge = False
+                    for rand_edm in random.shuffle(cur_cell.edm_cells):
+                        if rand_edm:    # it might be None
+                            if did_merge:   # merge with at most one neighbour
+                                break
+                            if rand_edm.province != cur_cell.province:
+                                assert isinstance(rand_edm, Cell)
+                                if rand_edm.province.size() == 1:
+                                    rand_edm.change_to_province(cur_cell.province)
+                                    did_merge = True
+                                else:
+                                    pass
 
         self.salary_time_to_towns_by_turn(self.get_player_id_list())
 
