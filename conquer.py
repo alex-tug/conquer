@@ -24,7 +24,7 @@
 
 # This is one of the sloppiest looking files in the project...
 
-import random,pygame,time,classcollection
+import random, pygame, time, classcollection
 from sys import path
 from os import sep
 
@@ -37,11 +37,12 @@ pygame.init()
 graphics_path = path[0] + sep + "images" + sep
 
 # Set the icon for the game window
-pygame.display.set_icon(pygame.image.load(graphics_path+"soldier.png"))
+pygame.display.set_icon(pygame.image.load(graphics_path + "soldier.png"))
 
 # Import TheGameBoard and game_menu
 from gameboard import TGB
 import gamemenu
+from game_view import GameView
 
 # Generate new random seed
 random.seed(round(time.time()))
@@ -53,7 +54,7 @@ IH = classcollection.TIH()
 conquer_version = "0.2"
 
 # Initialize the screen and set resolution
-screen = pygame.display.set_mode((800,600))
+screen = pygame.display.set_mode((800, 600))
 
 # Set windows caption
 pygame.display.set_caption("Conquer " + conquer_version)
@@ -62,19 +63,21 @@ pygame.display.set_caption("Conquer " + conquer_version)
 pygame.event.set_blocked(pygame.MOUSEMOTION)
 
 # Fill the screen with black color
-screen.fill((0,0,0))
+screen.fill((0, 0, 0))
 
 # Load images into image container, IH. (but not the interface images yet)
-gamemenu.load_image_files_but_not_interface_image_files(IH,graphics_path)
+gamemenu.load_image_files_but_not_interface_image_files(IH, graphics_path)
 
-# Create the Game Board
-# Parameters: pygame screen, image container and game path
-gb = TGB(screen, IH, path[0])
+# Create the Game View
+# Parameters: pygame screen, image container, game path and game board
+gv = GameView(screen, IH, path[0])
+
 
 # Load the interface images... at the moment they need
 # to be loaded after the Game Board has an instance
-IH.add_image(pygame.image.load(graphics_path+gb.sc.get("interface_filename","leiska.png")).convert(),"interface")
-IH.add_image(pygame.image.load(graphics_path+gb.sc.get("menu_interface_filename","menu.png")).convert(),"menu_interface")
+IH.add_image(pygame.image.load(graphics_path + gv.sc.get("interface_filename", "leiska.png")).convert(), "interface")
+IH.add_image(pygame.image.load(graphics_path + gv.sc.get("menu_interface_filename", "menu.png")).convert(),
+             "menu_interface")
 
 
 # We have nothing to lose if we try to use psyco.
@@ -88,31 +91,45 @@ else:
 
 
 # Generate main menu
-main_menu = gamemenu.TGameMenu(screen, IH.gi("menu_interface"),IH.gi("logo"),
-                              [("Play Scenario",0,[],"Play a premade map (scenarios-folder)"),
-                               ("Play Random Island",1,[],"Generate and play a random map"),
-                               ("Options",2,[],None),
-                               ("Map Editor",3,[],"Edit your own scenario"),
-                               ("Quit",4,[],None)],
-                              (800/2-10,200), spacing = 60)
+main_menu = gamemenu.TGameMenu(screen, IH.gi("menu_interface"), IH.gi("logo"),
+                               [("Play Scenario", 0, [], "Play a premade map (scenarios-folder)"),
+                                ("Play Random Island", 1, [], "Generate and play a random map"),
+                                ("Options", 2, [], None),
+                                ("Map Editor", 3, [], "Edit your own scenario"),
+                                ("Quit", 4, [], None)],
+                               (800 / 2 - 10, 200), spacing=60)
 
 # Generate Options menu
-options_menu = gamemenu.TGameMenu(screen, IH.gi("menu_interface"),IH.gi("logo"),
-                                 [("Show CPU moves with lines",0,["value_bool_editor",gb.show_cpu_moves_with_lines],"(Use left and right arrow key) Show CPU soldiers moves with lines."),
-                                  ("CPU AI Recursion Depth",1,["value_int_editor",gb.ai_recursion_depth,[1,20]],"(Use left and right arrow key) Increase AI Recursion Depth: computer may play better but uses more CPU."),
-                                  ("Return",2,[],None)],
-                                 (800/2-10,200), spacing = 60)
+options_menu = gamemenu.TGameMenu(screen, IH.gi("menu_interface"), IH.gi("logo"),
+                                [("Show CPU moves with lines", 0, ["value_bool_editor",
+                                                                   gv.show_cpu_moves_with_lines],
+                                "(Use left and right arrow key) Show CPU soldiers moves with lines."),
+                                ("CPU AI Recursion Depth", 1, ["value_int_editor", gv.ai_recursion_depth, [1, 20]],
+                                "(Use left and right arrow key) Increase AI Recursion Depth: computer may play better but uses more CPU."),
+                                ("Return", 2, [], None)],
+                                (800 / 2 - 10, 200), spacing=60)
 
 # The true main loop behing the whole application
 main_loop_running = True
+first_loop = True
 while main_loop_running:
     # Get selection from main menu
-    selected = main_menu.get_selection()
+
+    # DEBUG:
+    if first_loop:
+        # for debugging: automatically select random_map when menu is started for the first time
+        selected = 1
+        first_loop = False
+    else:
+        # also for debugging: exit directly
+        selected = 4
+        #selected = main_menu.get_selection()
+
     if selected == 0:
         # Dynamically generate menu items from scenario - files
 
         # Read scenarios
-        scenarios = gb.read_scenarios()
+        scenarios = board.read_scenarios()
 
         generated_menu_items = []
 
@@ -121,31 +138,26 @@ while main_loop_running:
 
         # Add scenarios as menuitems
         for i, scenario in enumerate(scenarios):
-            generated_menu_items.append((scenario, i+1, [], None))
+            generated_menu_items.append((scenario, i + 1, [], None))
 
         # Build the menu
         new_game_menu = gamemenu.TGameMenu(screen, IH.gi("menu_interface"), IH.gi("logo"),
-                                           generated_menu_items, (800/2-10, 200), spacing=30)
+                                           generated_menu_items, (800 / 2 - 10, 200), spacing=30)
 
         # Get selection from the newly build menu
         selection = new_game_menu.get_selection()
         if selection > 0:
             # User selecteded a scenario
-            gb.map_edit_mode = False
-            gb.new_game(random_map=False, scenario_file=new_game_menu.menu_items[selection][0])
-            gb.start_game()
+            gv.start(map_edit_mode=False, random_map=False, scenario_file=new_game_menu.menu_items[selection][0])
 
     # User selecteded to generate a random map
     if selected == 1:
         # Ask player counts
-        m1, m2 = gamemenu.get_human_and_cpu_count(gb.screen, gb.fonts)
-        gb.map_edit_mode = False
+        m1, m2 = gamemenu.get_human_and_cpu_count(gv.screen, gv.fonts)
 
-        # Initialize a new game
-        gb.new_game(random_map=True, human_players=m1, random_players_cpu=m2)
+        # hand over to game viewer
+        gv.start(map_edit_mode=False, random_map=True, human_players=m1, players_cpu=m2)
 
-        # Start the game
-        gb.start_game()
 
     # User selecteded to see options
     if selected == 2:
@@ -160,22 +172,22 @@ while main_loop_running:
     if selected == 3:
         # FIXME: little better looking
         # Ask player counts
-        m1, m2 = gamemenu.get_human_and_cpu_count(gb.screen, gb.fonts)
+        m1, m2 = gamemenu.get_human_and_cpu_count(gv.screen, gv.fonts)
 
         # Fill map with empty space
-        gb.create_cells(gb.MAPSIZE_X, gb.MAPSIZE_Y)
+        board.create_cells(board.MAPSIZE_X, board.MAPSIZE_Y)
 
         # Turn the editing mode on
-        gb.player_list = []
-        gb.map_edit_mode = True
-        gb.map_edit_info = [m1, m2, 1]
+        board.player_list = []
+        board.map_edit_mode = True
+        board.map_edit_info = [m1, m2, 1]
 
         # Start Editing
-        gb.start_game()
+        gv.start()
         # Editing Finished
 
-        gb.map_edit_mode = False
-        gb.map_edit_info = []
+        board.map_edit_mode = False
+        board.map_edit_info = []
 
     # User selected to quit the game
     if selected == 4:

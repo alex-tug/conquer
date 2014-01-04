@@ -23,9 +23,10 @@ import random# , time
 #from classcollection import coord
 
 class TAi:
-    def __init__(self,board):
-        """board -> TGameBoard instance which is the parent"""
-        self.board = board
+    def __init__(self, gv):
+        """gv -> GameViewer instance which is the parent"""
+        self.gv = gv
+        self.board = self.gv.board
         
     def act(self,depth):
         # List of executed moves that is returned
@@ -60,7 +61,7 @@ class TAi:
                     loppulaskija = 0
                     found_no_brute_force_solution = False
                     
-                    possible_moves = self.board.rek.get_province_border_lands(cur_soldier.cur_cell)
+                    possible_moves = cur_soldier.cur_cell.province.get_province_border_lands()
                     possible_moves = list(possible_moves)
                     random.shuffle(possible_moves)
                     
@@ -69,10 +70,10 @@ class TAi:
                             continue
 
                         # Player ID of the possible move's land
-                        target_owner = target_cell.side
+                        target_owner = target_cell.province.owner
 
                         # Target must be enemy's land
-                        if ((target_owner != self.board.turn) and (target_owner != 0)):
+                        if (target_owner != self.board.turn) and (target_owner != 0):
 
                             # Is the move possible?
                             blocked = self.board.is_blocked(cur_soldier,target_cell)
@@ -171,7 +172,7 @@ class TAi:
             cur_town = cur_cell.town
             if cur_town is not None:
 
-                if (not cur_town.dead) and (cur_cell.supplies > 0) and (cur_town.get_owner() == board.turn):
+                if (cur_cell.supplies > 0) and (cur_town.get_owner() == board.turn):
                     # Alive Town & current turn player's & has (supplies > 0)
 
                     # Has the island space for a new soldier?
@@ -254,7 +255,7 @@ class TAi:
                                 if board.valid_xy(new_pos):
                                     if new_pos in a_searched:
                                         continue
-                                    if board.cells[new_pos].side != board.turn:
+                                    if board.cells[new_pos].province.owner != board.turn:
                                         a_searched.append(new_pos)
                                         board.cells[new_pos].build_soldier()
                                         new_soldier = board.cells[new_pos].soldier
@@ -344,7 +345,7 @@ class TAi:
 
             # Iterate through actors
             for cur_cell in self.board.cells.values():
-                if (cur_cell.side == town_cell.side) and cur_cell.soldier:
+                if (cur_cell.province.owner == town_cell.province.owner) and cur_cell.soldier:
                     cur_soldier = cur_cell.soldier
                     # Panic - button has been pressed ;)
                     if not running:
@@ -353,7 +354,7 @@ class TAi:
                     # Do we still have income...?
                     if (cur_cell.income - cur_cell.expends) > 0:
                         # Self - explanatory
-                        if cur_cell in cell_list and not cur_soldier.dead and cur_soldier.get_owner() == town_cell.side:
+                        if cur_cell in cell_list and not cur_soldier.dead and cur_soldier.get_owner() == town_cell.province.owner:
                             # Level 6 are not updated, level 1 have better chance to be updated.
                             # But if we just need better soldiers we'll update everyone (paatos).
                             if cur_soldier.level < 6:

@@ -42,7 +42,8 @@ class Vec2d(object):
  
     # String representaion (for debugging)
     def __repr__(self):
-        return 'Vec2d(%s, %s)' % (self.x, self.y)
+        #return 'Vec2d(%s, %s)' % (self.x, self.y)
+        return '(%s, %s)' % (self.x, self.y)
  
     # Comparison
     def __eq__(self, other):

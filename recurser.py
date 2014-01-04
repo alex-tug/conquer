@@ -32,21 +32,6 @@ class TRecurser:
         self.recursed_land = []
         self.recursed_own_land_count = 0
   
-    def count_towns_in_province(self, start_cell):
-     # Initialize set to be used in crawling
-        land_area_rec = []
-        town_list = []
-        
-        # Crawl from (x,y), save crawling to land_area_rec and
-        # crawl for player_id of start_cell
-        self.crawl(start_cell, land_area_rec, [start_cell.province.side])
-        # Lets iterate through crawled places
-        for cell in land_area_rec:
-            # Check if current coordinate has a town
-            if cell.town:
-                town_list.append(cell.town)
-        return [town_list, land_area_rec]
-  
     def get_free_cell_in_province(self, start_cell):
         land_area_rec = []
         self.crawl(start_cell, land_area_rec, [start_cell.province.side])
@@ -103,24 +88,6 @@ class TRecurser:
                         self.crawl(cur_cell,recursed_provinces,[self.board.turn])
                         counter += 1
         return counter
-  
-    def get_province_border_lands(self, start_cell):
-        land_area_set = []
-        province_owner = start_cell.province.side
-        self.crawl(start_cell, land_area_set, [province_owner])
-        border_area_set = []
-        for cur_cell in land_area_set:
-            edm = self.board.get_right_edm(cur_cell.pos.y)
-            for i in xrange(6):
-                new_coord = cur_cell.pos + edm[i]
-                if self.board.valid_xy(new_coord):
-                    new_cell = self.board.cells[new_coord]
-                    if (new_cell.province.side != province_owner) and (new_cell.province.side != 0):
-                            # This worked with sets because sets can't have duplicates
-                            # now we use a list, so we have to check first
-                            if new_cell not in border_area_set:
-                                border_area_set.append(new_cell)
-        return border_area_set
          
     def recurse_own_province(self, start_cell, player_id_list=None):
         # Count and recurse through own province' lands

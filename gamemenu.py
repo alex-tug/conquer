@@ -3,6 +3,8 @@ from vec_2d import Vec2d
 import time
 from types import *
 
+from graphics_helper import Plotter
+
 #------------------------------------------------------------------------
 #
 #    This file is part of Conquer.
@@ -32,8 +34,6 @@ class TGameMenu:
         self.menu_items = menu_items
         # Pointer to pygame screen
         self.screen = screen
-        # Font to be used with the menu
-        self.used_font = pygame.font.Font("yanone_regular.otf", 24)
         # Coordinates where to render the menu
         self.start_vec = start_vec
         # Space between menuitems
@@ -42,6 +42,11 @@ class TGameMenu:
         self.bg = bg_image
         self.logo = logo1
 
+        self.plotter = Plotter(self.screen)
+        # Font to be used with the menu
+        self.used_font = pygame.font.Font("yanone_regular.otf", 24)
+        self.plotter.cur_font = self.used_font
+
     def draw_items(self, text=None):
         # If images and/or text are supplied, draw them
         if self.bg:
@@ -49,7 +54,7 @@ class TGameMenu:
         if self.logo:
             self.screen.blit(self.logo, (263, 0))
         if text:
-            text_at(self.screen, text[0], Vec2d(text[1], text[2]),
+            self.plotter.text_at(text[0], Vec2d(text[1], text[2]),
                     font=self.used_font, wipe_background=True, color=(255, 255, 255))
 
         # Iterate through menu items
@@ -76,9 +81,8 @@ class TGameMenu:
                         text = "%s (%s)" % (text, "off")
 
             # Draw the menu item text
-            text_at(self.screen, text,
+            self.plotter.text_at(text,
                     self.start_vec + Vec2d(0, self.spacing) * i,
-                    font=self.used_font,
                     color=cur_color,
                     wipe_background=False,
                     drop_shadow=shadow
@@ -87,14 +91,18 @@ class TGameMenu:
         # Caption Text
         if self.menu_items[self.pos][3]:
             # It has caption text, draw it
-            text_at(self.screen, self.menu_items[self.pos][3], Vec2d(400, 75), font=self.used_font)
+            self.plotter.text_at(self.menu_items[self.pos][3],
+                                 Vec2d(400, 75))
 
         # Some info :)
         tmp_color = (50, 185, 10)
-        text_at(self.screen, "Contact:", Vec2d(400, 520), color=tmp_color,
-                wipe_background=False, font=self.used_font)
-        text_at(self.screen, "Conquer Dev Team http://pyconquer.googlecode.com/", Vec2d(400, 545),
-                color=tmp_color, wipe_background=False, font=self.used_font)
+        self.plotter.text_at("Contact:", Vec2d(400, 520),
+                             color=tmp_color,
+                             wipe_background=False)
+        self.plotter.text_at("Conquer Dev Team http://pyconquer.googlecode.com/",
+                             Vec2d(400, 545),
+                             color=tmp_color,
+                             wipe_background=False)
 
     def scroll(self, dy):
         # Change the selected menu item
@@ -162,45 +170,8 @@ class TGameMenu:
 # end of class TGameMenu
 ###################################################################
 
-def text_at(screen,
-            text,
-            pos,
-            wipe_background=True,
-            drop_shadow=False,
-            font=None,
-            color=(255, 255, 255),
-            flip_now_flag=False):
-    """
-    Render text
-    text -> text to be drawn
-    pos -> coordinates as Vec2d(x,y)
-    wipe_background = True -> draw a box behing the text
-    cur_font = self.fonts.font_2 -> font to be used
-    color = (255,255,255) -> font color
-    flip_now_flag = False -> immediately flip the screen
-    """
-    assert isinstance(pos, Vec2d)
 
-    # Render text
-    text_rendered = font.render(text, 1, color)
-
-    # Wipe_Background
-    corner_2 = font.size(text)
-    if wipe_background:
-        pygame.draw.rect(screen, (0, 0, 0), (pos.x - corner_2[0]/2, pos.y, corner_2[0], corner_2[1]))
-
-    # Shadow
-    if drop_shadow:
-        shadow_text_ = font.render(text, 1, (255 - color[0], 255 - color[1], 255 - color[2]))
-        screen.blit(shadow_text_, pos - Vec2d(corner_2[0]/2, 0) + Vec2d(1, 1))
-
-    # Draw the text on a screen
-    screen.blit(text_rendered, pos - Vec2d(corner_2[0]/2, 0))    # - Vec2d(50, 0)
-    if flip_now_flag:
-        pygame.display.flip()
-
-
-def text_input(screen, caption, corner_1, span_vec, fonts, only_numbers=False):
+def text_input(plotter, caption, corner_1, span_vec, fonts, only_numbers=False):
     # Make an input-box and prompt it for input
     assert isinstance(corner_1, Vec2d)
     x1 = corner_1.x
@@ -210,8 +181,8 @@ def text_input(screen, caption, corner_1, span_vec, fonts, only_numbers=False):
     h1 = span_vec.y
 
     cur_str = []
-    pygame.draw.rect(screen, (30, 30, 30), (x1, y1, w1, h1))
-    text_at(screen, caption, Vec2d(x1 + w1 / 4, y1), font=fonts.font_2, wipe_background=False)
+    pygame.draw.rect(plotter.screen, (30, 30, 30), (x1, y1, w1, h1))
+    plotter.text_at(caption, Vec2d(x1 + w1 / 4, y1), font=fonts.font_2, wipe_background=False)
     pygame.display.flip()
 
     done = False
@@ -247,10 +218,10 @@ def text_input(screen, caption, corner_1, span_vec, fonts, only_numbers=False):
             cur_text_pos = Vec2d(x1 + (w1 / 2) - (len(cur_str) * 4), y1 + 15)
             cur_font = fonts.font_4
 
-            text_at(screen, "".join(cur_str),
-                    cur_text_pos,
-                    wipe_background=False,
-                    font=cur_font)
+            plotter.text_at("".join(cur_str),
+                                cur_text_pos,
+                                wipe_background=False,
+                                font=cur_font)
             pygame.display.flip()
     return "".join(cur_str)
 
@@ -259,30 +230,39 @@ def load_image_files_but_not_interface_image_files(image_handler, graphics_path)
     tmp = pygame.image.load(graphics_path + "skull7.png").convert_alpha()
     tmp.set_colorkey(tmp.get_at((0, 0)))
     image_handler.add_image(tmp, "skull")
+
     tmp = pygame.image.load(graphics_path + "soldier.png").convert_alpha()
     tmp.set_colorkey(tmp.get_at((0, 0)))
     image_handler.add_image(tmp, "soldier")
+
     tmp = pygame.image.load(graphics_path + "armytent.png").convert_alpha()
     tmp.set_colorkey(tmp.get_at((0, 0)))
     image_handler.add_image(tmp, "town")
+
     tmp = pygame.image.load(graphics_path + "hextile2_.png").convert()
     tmp.set_colorkey(tmp.get_at((0, 0)))
-    image_handler.add_image(tmp, "1")
+    image_handler.add_image(tmp, "cell_1")
+
     tmp = pygame.image.load(graphics_path + "hextile_.png").convert()
     tmp.set_colorkey(tmp.get_at((0, 0)))
-    image_handler.add_image(tmp, "2")
+    image_handler.add_image(tmp, "cell_2")
+
     tmp = pygame.image.load(graphics_path + "hextile3_.png").convert()
     tmp.set_colorkey(tmp.get_at((0, 0)))
-    image_handler.add_image(tmp, "3")
+    image_handler.add_image(tmp, "cell_3")
+
     tmp = pygame.image.load(graphics_path + "hextile4_.png").convert()
     tmp.set_colorkey(tmp.get_at((0, 0)))
-    image_handler.add_image(tmp, "4")
+    image_handler.add_image(tmp, "cell_4")
+
     tmp = pygame.image.load(graphics_path + "hextile5_.png").convert()
     tmp.set_colorkey(tmp.get_at((0, 0)))
-    image_handler.add_image(tmp, "5")
+    image_handler.add_image(tmp, "cell_5")
+
     tmp = pygame.image.load(graphics_path + "hextile6_.png").convert()
     tmp.set_colorkey(tmp.get_at((0, 0)))
-    image_handler.add_image(tmp, "6")
+    image_handler.add_image(tmp, "cell_6")
+
     image_handler.add_image(pygame.image.load(graphics_path + "teksti.png").convert(), "logo")
     image_handler.add_image(pygame.image.load(graphics_path + "mapedit.png").convert(), "mapedit")
 
@@ -300,8 +280,10 @@ def get_human_and_cpu_count(screen, fonts):
     # get number of human players
     nr_of_h = 0
     while True:
-        input_raw = text_input(screen, 'How many human players (1-6)?',
-                               text_pos, span_vec, fonts, only_numbers=True)
+        #input_raw = text_input(screen, 'How many human players (1-6)?',
+        #                       text_pos, span_vec, fonts, only_numbers=True)
+        # DEBUG:
+        input_raw = '2'
 
         try:
             nr_of_h = int(input_raw)
@@ -317,9 +299,12 @@ def get_human_and_cpu_count(screen, fonts):
         if nr_of_h == 1:
             min_nr_of_ai = 1
         while True:
-            input_raw = text_input(screen,
-                                   'How many cpu players (%d-%d)?' % (min_nr_of_ai, max_player - nr_of_h),
-                                   text_pos, span_vec, fonts, only_numbers=True)
+            #input_raw = text_input(screen,
+            #                       'How many cpu players (%d-%d)?' % (min_nr_of_ai, max_player - nr_of_h),
+            #                       text_pos, span_vec, fonts, only_numbers=True)
+            # DEBUG:
+            input_raw = '2'
+
             try:
                 nr_of_c = int(input_raw)
             except:
